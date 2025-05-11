@@ -1,0 +1,18 @@
+Map displayed
+Message from Aragon to Bavaria: Propose alliance for mutual defense?
+Message from Bavaria to Aragon: Agreed, let's form an alliance.
+Aragon and Bavaria formed an alliance
+Cretia offered trade to Aragon: 30 for 20
+Aragon accepted trade from Cretia
+Bavaria offered trade to Cretia: 15 for 10 (smuggling)
+Cretia accepted trade from Bavaria
+Aragon moved to (1,1)
+Map displayed
+Bavaria repelled Cretia's attack
+Bavaria repelled Aragon's attack
+Aragon and Bavaria alliance broken
+Aragon betrayed ally Bavaria
+
+=== Game Log ===
+Bavaria -> Aragon: Agreed, let's form an alliance.
+Aragon -> Bavaria: Propose alliance for mutual defense?
