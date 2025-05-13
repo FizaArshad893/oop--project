@@ -1,104 +1,139 @@
-#include "Kingdom.hpp"
-#include "Communication.hpp"
-#include "Alliance.hpp"
-#include "Trade.hpp"
-#include "Conflict.hpp"
-#include "Map.hpp"
-#include <fstream>
-#include <ctime>
-#include <cstdlib>
-#include <cstring>
+#include "Stronghold.h"
+#include <iostream>
+#include <limits>
 
-int main() {
-    srand(time(nullptr));
-    std::ofstream gameLog("logs/game_session_log.txt", std::ios::app);
+void clearInputBuffer() {
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+}
 
-    // Secure timestamp
-    time_t now = time(nullptr);
-    char startBuffer[100];
-    ctime_s(startBuffer, sizeof(startBuffer), &now);
-    startBuffer[strcspn(startBuffer, "\n")] = '\0'; // remove newline
-    gameLog << "=== Game Session Started: " << startBuffer << " ===" << std::endl;
+int
 
-    Kingdom k1("Aragon", 1000, 80, 200);
-    k1.addResource(new Food(500));
-    k1.addResource(new Gold(300));
+main() {
+    try {
+        Kingdom kingdom1("Westoria");
+        Kingdom kingdom2("Eastland");
+        Communication comm;
+        Alliance alliances;
+        Trade trade;
+        Map gameMap(10, 10);
 
-    Kingdom k2("Bavaria", 1200, 75, 250);
-    k2.addResource(new Food(600));
-    k2.addResource(new Gold(250));
+        gameMap.moveKingdom("Westoria", 2, 2);
+        gameMap.moveKingdom("Eastland", 8, 8);
 
-    Kingdom k3("Caledonia", 900, 85, 180);
-    k3.addResource(new Food(450));
-    k3.addResource(new Gold(350));
+        while (true) {
+            cout << "\nStronghold Game Menu:\n";
+            cout << "1. Update Kingdoms\n";
+            cout << "2. Send Message\n";
+            cout << "3. View Messages\n";
+            cout << "4. Form Alliance\n";
+            cout << "5. Break Alliance\n";
+            cout << "6. Create Trade Offer\n";
+            cout << "7. Accept Trade Offer\n";
+            cout << "8. Save Game\n";
+            cout << "9. Load Game\n";
+            cout << "10. View Stats\n";
+            cout << "11. Exit\n";
+            cout << "Enter choice: ";
 
-    Communication comm;
-    Alliance alliances;
-    Trade trade;
-    Conflict conflict;
-    Map map;
+            int choice;
+            cin >> choice;
+            clearInputBuffer();
 
-    map.placeKingdom("Aragon", 0, 0);
-    map.placeKingdom("Bavaria", 2, 2);
-    map.placeKingdom("Caledonia", 4, 4);
-    gameLog << "Kingdoms placed on map\n";
-    map.display();
+            if (choice == 11) break;
 
-    for (int turn = 1; turn <= 3; ++turn) {
-        gameLog << "\n=== Turn " << turn << " ===\n";
+            switch (choice) {
+            case 1:
+                kingdom1.update();
+                kingdom2.update();
+                cout << "Kingdoms updated.\n";
+                break;
+            case 2: {
+                string sender, content;
+                cout << "Enter sender (Westoria/Eastland): ";
+                getline(cin, sender);
+                cout << "Enter message: ";
+                getline(cin, content);
+                comm.sendMessage(sender, content);
+                comm.saveChatLog("chat_log.txt");
+                cout << "Message sent.\n";
+                break;
+            }
+            case 3: {
+                int count;
+                string* messages = comm.getMessages(count);
+                for (int i = 0; i < count; i++) {
+                    cout << messages[i] << "\n";
+                }
+                delete[] messages;
+                break;
+            }
+            case 4:
+                alliances.formAlliance("Westoria", "Eastland");
+                cout << "Alliance formed between Westoria and Eastland.\n";
+                break;
+            case 5:
+                alliances.breakAlliance("Westoria", "Eastland");
+                cout << "Alliance broken between Westoria and Eastland.\n";
+                break;
+            case 6: {
+                string from, to, resource;
+                double amount, price;
+                cout << "Enter from kingdom: ";
+                getline(cin, from);
+                cout << "Enter to kingdom: ";
+                getline(cin, to);
+                cout << "Enter resource: ";
+                getline(cin, resource);
+                cout << "Enter amount: ";
+                cin >> amount;
+                cout << "Enter price: ";
+                cin >> price;
+                clearInputBuffer();
+                trade.createOffer(from, to, resource, amount, price);
+                cout << "Trade offer created.\n";
+                break;
+            }
+            case 7: {
+                string kingdom, offerId;
+                cout << "Enter kingdom: ";
+                getline(cin, kingdom);
+                cout << "Enter offer ID: ";
+                getline(cin, offerId);
+                Kingdom& target = (kingdom == "Westoria") ? kingdom1 : kingdom2;
+                if (trade.acceptOffer(kingdom, offerId, target.getResources())) {
+                    cout << "Trade offer accepted.\n";
+                }
+                else {
+                    cout << "Trade offer failed.\n";
+                }
+                break;
+            }
+            case 8:
+                kingdom1.saveGame("game_save.txt");
+                kingdom2.saveGame("game_save.txt");
+                cout << "Game saved.\n";
+                break;
+            case 9:
+                kingdom1.loadGame("game_save.txt");
+                kingdom2.loadGame("game_save.txt");
+                cout << "Game loaded.\n";
+                break;
+            case 10:
+                kingdom1.logStats("score.txt");
+                kingdom2.logStats("score.txt");
+                cout << "Stats logged to score.txt.\n";
+                break;
+            default:
+                cout << "Invalid choice.\n";
+            }
+        }
 
-        k1.updateEconomy();
-        k1.updatePopulation();
-        k1.updateArmy();
-        k2.updateEconomy();
-        k2.updatePopulation();
-        k2.updateArmy();
-        k3.updateEconomy();
-        k3.updatePopulation();
-        k3.updateArmy();
-        gameLog << "Kingdoms updated: Economy, Population, Army\n";
-
-        comm.sendMessage("Aragon", "Bavaria", "Propose a peace treaty for 5 turns?");
-        comm.sendMessage("Bavaria", "Aragon", "Agreed!");
-        comm.sendMessage("Caledonia", "Aragon", "Beware, I’m watching you.");
-        gameLog << "Messages exchanged\n";
-
-        alliances.formTreaty("Aragon", "Bavaria", "Peace", 5);
-        alliances.updateTreaties();
-        gameLog << "Treaty formed: Aragon-Bavaria\n";
-
-        trade.offerTrade(&k1, &k2, "Food", 100, 50);
-        trade.smuggle(&k3, &k2, "Gold", 30);
-        trade.imposeEmbargo("Caledonia");
-        gameLog << "Trade and smuggling attempted\n";
-
-        conflict.attack(&k3, &k2, &alliances);
-        conflict.surpriseAttack(&k2, &k1, &alliances);
-        gameLog << "Conflicts resolved\n";
-
-        map.moveKingdom("Aragon", 1, 1);
-        gameLog << "Aragon moved\n";
-
-        std::cout << "\nTurn " << turn << " State:\n";
-        k1.display();
-        k2.display();
-        k3.display();
-        alliances.displayTreaties();
-        map.display();
+    }
+    catch (const CustomException& e) {
+        cerr << "Error: " << e.message << endl;
+        return 1;
     }
 
-    std::cout << "\nChat Log:\n";
-    comm.displayMessages();
-
-    gameLog << "Session completed\n";
-
-    // Secure end time
-    time_t endTime = time(nullptr);
-    char endBuffer[100];
-    ctime_s(endBuffer, sizeof(endBuffer), &endTime);
-    endBuffer[strcspn(endBuffer, "\n")] = '\0';
-    gameLog << "=== Game Session Ended: " << endBuffer << " ===\n\n";
-    gameLog.close();
-
-    system("pause");
+    return 0;
 }
