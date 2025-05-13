@@ -1,90 +1,78 @@
-#include "Alliance.hpp"
-#include <iostream>
-#include <ctime>
+#include "Stronghold.h"
 
-Alliance::Alliance() : treatyCount(0) {
-    treatyLog.open("logs/treaty_log.txt", std::ios::app);
-    for (int i = 0; i < MAX_TREATIES; ++i) {
-        treaties[i].active = false;
+Alliance::Alliance() : allianceCount(0), allianceCapacity(10) {
+    alliances = new AllianceEntry[allianceCapacity];
+    for (int i = 0; i < allianceCapacity; i++) {
+        alliances[i].allyCount = 0;
+        alliances[i].allyCapacity = 10;
+        alliances[i].allies = new string[10];
     }
 }
 
 Alliance::~Alliance() {
-    if (treatyLog.is_open()) treatyLog.close();
-}
-
-bool Alliance::formTreaty(const std::string& k1, const std::string& k2, const std::string& type, int duration) {
-    if (treatyCount >= MAX_TREATIES) {
-        std::cout << "Cannot form treaty: Maximum limit reached!" << std::endl;
-        return false;
+    for (int i = 0; i < allianceCount; i++) {
+        delete[] alliances[i].allies;
     }
-
-    treaties[treatyCount] = { k1, k2, type, duration, true };
-    treatyCount++;
-
-    time_t now = time(nullptr);
-    char buffer[100];
-    ctime_s(buffer, sizeof(buffer), &now);
-    buffer[strcspn(buffer, "\n")] = '\0'; // remove newline
-
-    treatyLog << "[" << buffer << "] Treaty formed: " << k1 << " and " << k2 << " (" << type << ", " << duration << " turns)" << std::endl;
-    std::cout << "Treaty formed between " << k1 << " and " << k2 << std::endl;
-    return true;
+    delete[] alliances;
 }
 
-void Alliance::breakTreaty(const std::string& k1, const std::string& k2) {
-    for (int i = 0; i < treatyCount; ++i) {
-        if (treaties[i].active && ((treaties[i].kingdom1 == k1 && treaties[i].kingdom2 == k2) ||
-            (treaties[i].kingdom1 == k2 && treaties[i].kingdom2 == k1))) {
+void Alliance::formAlliance(const string& kingdom1, const string& kingdom2) {
+    if (kingdom1 == kingdom2)
+        throw CustomException("Cannot ally with self");
+    int idx1 = -1, idx2 = -1;
+    for (int i = 0; i < allianceCount; i++) {
+        if (alliances[i].kingdom == kingdom1) idx1 = i;
+        if (alliances[i].kingdom == kingdom2) idx2 = i;
+    }
+    if (idx1 == -1) {
+        if (allianceCount >= allianceCapacity) throw CustomException("Alliance capacity exceeded");
+        idx1 = allianceCount++;
+        alliances[idx1].kingdom = kingdom1;
+    }
+    if (idx2 == -1) {
+        if (allianceCount >= allianceCapacity) throw CustomException("Alliance capacity exceeded");
+        idx2 = allianceCount++;
+        alliances[idx2].kingdom = kingdom2;
+    }
+    if (alliances[idx1].allyCount >= alliances[idx1].allyCapacity ||
+        alliances[idx2].allyCount >= alliances[idx2].allyCapacity)
+        throw CustomException("Ally capacity exceeded");
+    alliances[idx1].allies[alliances[idx1].allyCount++] = kingdom2;
+    alliances[idx2].allies[alliances[idx2].allyCount++] = kingdom1;
+}
 
-            treaties[i].active = false;
-            time_t now = time(nullptr);
-            char buffer[100];
-            ctime_s(buffer, sizeof(buffer), &now);
-            buffer[strcspn(buffer, "\n")] = '\0';
-
-            treatyLog << "[" << buffer << "] Treaty broken: " << k1 << " and " << k2 << std::endl;
-            std::cout << "Treaty broken between " << k1 << " and " << k2 << std::endl;
-            return;
+void Alliance::breakAlliance(const string& kingdom1, const string& kingdom2) {
+    int idx1 = -1, idx2 = -1;
+    for (int i = 0; i < allianceCount; i++) {
+        if (alliances[i].kingdom == kingdom1) idx1 = i;
+        if (alliances[i].kingdom == kingdom2) idx2 = i;
+    }
+    if (idx1 == -1 || idx2 == -1) return;
+    for (int i = 0; i < alliances[idx1].allyCount; i++) {
+        if (alliances[idx1].allies[i] == kingdom2) {
+            alliances[idx1].allies[i] = alliances[idx1].allies[--alliances[idx1].allyCount];
+            break;
+        }
+    }
+    for (int i = 0; i < alliances[idx2].allyCount; i++) {
+        if (alliances[idx2].allies[i] == kingdom1) {
+            alliances[idx2].allies[i] = alliances[idx2].allies[--alliances[idx2].allyCount];
+            break;
         }
     }
 }
 
-bool Alliance::isAllied(const std::string& k1, const std::string& k2) const {
-    for (int i = 0; i < treatyCount; ++i) {
-        if (treaties[i].active && ((treaties[i].kingdom1 == k1 && treaties[i].kingdom2 == k2) ||
-            (treaties[i].kingdom1 == k2 && treaties[i].kingdom2 == k1))) {
-            return true;
+bool Alliance::isAllied(const string& kingdom1, const string& kingdom2) const {
+    int idx1 = -1;
+    for (int i = 0; i < allianceCount; i++) {
+        if (alliances[i].kingdom == kingdom1) {
+            idx1 = i;
+            break;
         }
+    }
+    if (idx1 == -1) return false;
+    for (int i = 0; i < alliances[idx1].allyCount; i++) {
+        if (alliances[idx1].allies[i] == kingdom2) return true;
     }
     return false;
-}
-
-void Alliance::updateTreaties() {
-    for (int i = 0; i < treatyCount; ++i) {
-        if (treaties[i].active) {
-            treaties[i].duration--;
-            if (treaties[i].duration <= 0) {
-                treaties[i].active = false;
-
-                time_t now = time(nullptr);
-                char buffer[100];
-                ctime_s(buffer, sizeof(buffer), &now);
-                buffer[strcspn(buffer, "\n")] = '\0';
-
-                treatyLog << "[" << buffer << "] Treaty expired: " << treaties[i].kingdom1
-                    << " and " << treaties[i].kingdom2 << std::endl;
-            }
-        }
-    }
-}
-
-void Alliance::displayTreaties() const {
-    std::cout << "Active Treaties:" << std::endl;
-    for (int i = 0; i < treatyCount; ++i) {
-        if (treaties[i].active) {
-            std::cout << treaties[i].kingdom1 << " and " << treaties[i].kingdom2
-                << " (" << treaties[i].type << ", " << treaties[i].duration << " turns)" << std::endl;
-        }
-    }
 }
