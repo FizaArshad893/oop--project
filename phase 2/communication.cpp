@@ -1,34 +1,36 @@
-#include "Communication.hpp"
-#include <iostream>
-#include <fstream>
-#include <ctime>
-#include <cstring>  // For strcspn
+#include "Stronghold.h"
 
-Communication::Communication() {
-    chatLog.open("logs/chat_log.txt", std::ios::app);
+Communication::Communication() : messageCount(0), messageCapacity(100) {
+    messages = new Message[messageCapacity];
 }
 
 Communication::~Communication() {
-    if (chatLog.is_open()) chatLog.close();
+    delete[] messages;
 }
 
-void Communication::sendMessage(const std::string& sender, const std::string& receiver, const std::string& message) {
-    time_t now = time(nullptr);
-
-    // Secure timestamp generation
-    char timestamp[100];
-    ctime_s(timestamp, sizeof(timestamp), &now);
-    timestamp[strcspn(timestamp, "\n")] = '\0';  // Remove newline character
-
-    chatLog << "[" << timestamp << "] " << sender << " to " << receiver << ": " << message << std::endl;
-    std::cout << sender << " sent to " << receiver << ": " << message << std::endl;
+void Communication::sendMessage(const string& sender, const string& content) {
+    if (sender.empty() || content.empty())
+        throw CustomException("Empty message or sender");
+    if (messageCount >= messageCapacity)
+        throw CustomException("Message capacity exceeded");
+    messages[messageCount].sender = sender;
+    messages[messageCount].content = content;
+    messageCount++;
 }
 
-void Communication::displayMessages() const {
-    std::ifstream inLog("logs/chat_log.txt");
-    std::string line;
-    while (std::getline(inLog, line)) {
-        std::cout << line << std::endl;
+string* Communication::getMessages(int& count) const {
+    count = messageCount;
+    string* result = new string[messageCount];
+    for (int i = 0; i < messageCount; i++) {
+        result[i] = messages[i].sender + ": " + messages[i].content;
     }
-    inLog.close();
+    return result;
+}
+
+void Communication::saveChatLog(const string& filename) const {
+    ofstream out(filename, ios::app);
+    if (!out) throw CustomException("Failed to open chat log");
+    for (int i = 0; i < messageCount; i++) {
+        out << messages[i].sender << ": " << messages[i].content << "\n";
+    }
 }
