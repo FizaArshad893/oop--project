@@ -1,89 +1,57 @@
-#include "Map.hpp"
-#include <cmath>
-#include <iostream>
+#include "Stronghold.h"
 
-Map::Map() : positionCount(0) {
-    for (int i = 0; i < MAX_KINGDOMS; ++i) {
-        kingdomPositions[i].active = false;
+Map::Map(int w, int h) : width(w), height(h), positionCount(0), positionCapacity(10) {
+    grid = new int* [width];
+    for (int i = 0; i < width; i++) {
+        grid[i] = new int[height];
+        for (int j = 0; j < height; j++) grid[i][j] = 0;
     }
+    positions = new Position[positionCapacity];
+    for (int i = 0; i < positionCapacity; i++) positions[i].isUsed = false;
 }
 
-bool Map::placeKingdom(const std::string& name, int x, int y) {
-    if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) {
-        std::cout << "Invalid coordinates for " << name << std::endl;
-        return false;
+Map::~Map() {
+    for (int i = 0; i < width; i++) {
+        delete[] grid[i];
     }
-    for (int i = 0; i < positionCount; ++i) {
-        if (kingdomPositions[i].active && kingdomPositions[i].name == name) {
-            kingdomPositions[i].x = x;
-            kingdomPositions[i].y = y;
-            std::cout << name << " placed at (" << x << ", " << y << ")" << std::endl;
-            return true;
+    delete[] grid;
+    delete[] positions;
+}
+
+void Map::moveKingdom(const string& kingdom, int x, int y) {
+    if (x < 0 || x >= width || y < 0 || y >= height)
+        throw CustomException("Invalid map coordinates");
+    for (int i = 0; i < positionCount; i++) {
+        if (positions[i].kingdom == kingdom && positions[i].isUsed) {
+            positions[i].x = x;
+            positions[i].y = y;
+            return;
         }
     }
-    if (positionCount >= MAX_KINGDOMS) {
-        std::cout << "Cannot place kingdom: Maximum limit reached!" << std::endl;
-        return false;
-    }
-    kingdomPositions[positionCount] = { name, x, y, true };
+    if (positionCount >= positionCapacity)
+        throw CustomException("Position capacity exceeded");
+    positions[positionCount].kingdom = kingdom;
+    positions[positionCount].x = x;
+    positions[positionCount].y = y;
+    positions[positionCount].isUsed = true;
     positionCount++;
-    std::cout << name << " placed at (" << x << ", " << y << ")" << std::endl;
-    return true;
 }
 
-bool Map::moveKingdom(const std::string& name, int newX, int newY) {
-    if (newX < 0 || newX >= SIZE || newY < 0 || newY >= SIZE) {
-        std::cout << "Invalid move for " << name << std::endl;
-        return false;
-    }
-    for (int i = 0; i < positionCount; ++i) {
-        if (kingdomPositions[i].active && kingdomPositions[i].name == name) {
-            kingdomPositions[i].x = newX;
-            kingdomPositions[i].y = newY;
-            std::cout << name << " moved to (" << newX << ", " << newY << ")" << std::endl;
-            return true;
-        }
-    }
-    std::cout << "Kingdom " << name << " not found!" << std::endl;
-    return false;
-}
-
-int Map::getDistance(const std::string& k1, const std::string& k2) const {
+int Map::getDistance(const string& kingdom1, const string& kingdom2) const {
     int x1 = -1, y1 = -1, x2 = -1, y2 = -1;
-    for (int i = 0; i < positionCount; ++i) {
-        if (kingdomPositions[i].active) {
-            if (kingdomPositions[i].name == k1) {
-                x1 = kingdomPositions[i].x;
-                y1 = kingdomPositions[i].y;
+    for (int i = 0; i < positionCount; i++) {
+        if (positions[i].isUsed) {
+            if (positions[i].kingdom == kingdom1) {
+                x1 = positions[i].x;
+                y1 = positions[i].y;
             }
-            else if (kingdomPositions[i].name == k2) {
-                x2 = kingdomPositions[i].x;
-                y2 = kingdomPositions[i].y;
+            if (positions[i].kingdom == kingdom2) {
+                x2 = positions[i].x;
+                y2 = positions[i].y;
             }
         }
     }
-    if (x1 == -1 || x2 == -1) {
-        return -1;
-    }
-    int dx = x1 - x2;
-    int dy = y1 - y2;
-    return static_cast<int>(std::sqrt(dx * dx + dy * dy));
-}
-
-void Map::display() const {
-    std::cout << "Map (5x5 Grid):" << std::endl;
-    char grid[SIZE][SIZE] = { {' '} };
-    for (int i = 0; i < positionCount; ++i) {
-        if (kingdomPositions[i].active) {
-            int x = kingdomPositions[i].x;
-            int y = kingdomPositions[i].y;
-            grid[x][y] = kingdomPositions[i].name[0];
-        }
-    }
-    for (int i = 0; i < SIZE; ++i) {
-        for (int j = 0; j < SIZE; ++j) {
-            std::cout << "[" << grid[i][j] << "]";
-        }
-        std::cout << std::endl;
-    }
+    if (x1 == -1 || x2 == -1)
+        throw CustomException("Kingdom not found on map");
+    return abs(x1 - x2) + abs(y1 - y2);
 }
